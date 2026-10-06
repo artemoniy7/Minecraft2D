@@ -1,6 +1,4 @@
 import math
-import random
-
 import pygame
 
 from block_registry import BlockRegistry
@@ -56,16 +54,12 @@ class World:
         return math.floor(x / World.CHUNK_SIZE)
 
     def _surface_height(self, x):
-        # Несколько частот дают более естественные холмы, а детерминированный
-        # шум добавляет небольшую неровность, сохраняя один и тот же мир.
-        low = math.sin(x * 0.035) * 5.0
-        medium = math.sin(x * 0.09 + 1.7) * 2.5
-        detail = math.sin(x * 0.22 + 4.0) * 0.8
-
-        rng = random.Random(self.SEED + x * 1009)
-        jitter = rng.uniform(-1.2, 1.2)
-
-        return max(5, min(self.WORLD_HEIGHT - 8, round(27 + low + medium + detail + jitter)))
+        # Плавный рельеф без случайного джиттера на каждом блоке.
+        broad = math.sin(x * 0.018 + 0.8) * 7.0
+        hills = math.sin(x * 0.045 + 2.1) * 2.5
+        gentle = math.sin(x * 0.075 + 4.0) * 0.9
+        height = round(27 + broad + hills + gentle)
+        return max(8, min(self.WORLD_HEIGHT - 8, height))
 
     def _generate_chunk(self, chunk_x):
         if chunk_x in self.loaded_chunks:
@@ -113,6 +107,15 @@ class World:
                     self.blocks.pop((x, y), None)
 
             self.loaded_chunks.remove(chunk_x)
+
+    def set_block(self, x, y, name):
+        if y < 0 or y >= self.WORLD_HEIGHT or self._chunk_x(x) not in self.loaded_chunks:
+            return False
+        if name is None:
+            self.blocks.pop((x, y), None)
+        else:
+            self.blocks[(x, y)] = name
+        return True
 
     def get_block(self, x, y):
         if y < 0:
@@ -165,6 +168,28 @@ def update_camera(dt):
     )
 
 
+selected_block = "dirt"
+
+
+def interact_with_block(button):
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    world_x = mouse_x + camera.x
+    world_y = mouse_y + camera.y
+    block_x = math.floor(world_x / BLOCK_SIZE)
+    block_y = math.floor(world_y / BLOCK_SIZE)
+
+    if button == 1:
+        if world.get_block(block_x, block_y) is not None:
+            world.set_block(block_x, block_y, None)
+    elif button == 3:
+        if world.get_block(block_x, block_y) is not None:
+            return
+        block_rect = pygame.Rect(block_x * BLOCK_SIZE, block_y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+        if player.get_hitbox().colliderect(block_rect):
+            return
+        world.set_block(block_x, block_y, selected_block)
+
+
 running = True
 
 while running:
@@ -175,6 +200,8 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             player.jump()
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3):
+            interact_with_block(event.button)
 
     # Чанки появляются впереди игрока, а далёкие выгружаются из памяти.
     world.update_streaming(player.x)
