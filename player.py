@@ -10,7 +10,7 @@ class Player:
         self.vy = 0
         self.speed = 5
         self.gravity = 0.5
-        self.jump_force = -9
+        self.jump_force = -10
         self.on_ground = False
         self.facing_right = True
         self.walk_time = 0
@@ -31,16 +31,16 @@ class Player:
             self.vx = self.speed
             moving = True
 
-        self.facing_right = mouse_x >= 640
+        self.facing_right = mouse_x >= self.x
 
         if moving:
-            self.walk_time += 0.15
+            self.walk_time += 0.2
 
         self.x += self.vx
         self.vy += self.gravity
         self.y += self.vy
 
-        ground_y = 360 - 64
+        ground_y = 360 - 24
         if self.y > ground_y:
             self.y = ground_y
             self.vy = 0
@@ -52,20 +52,29 @@ class Player:
             self.on_ground = False
 
     def draw(self, screen):
-        swing = math.sin(self.walk_time) * 20
+        swing = math.sin(self.walk_time) * 18
         flip = not self.facing_right
 
-        leg1 = pygame.transform.flip(pygame.transform.rotate(self.leg, swing), flip, False)
-        leg2 = pygame.transform.flip(pygame.transform.rotate(self.leg, -swing), flip, False)
-        arm1 = pygame.transform.flip(pygame.transform.rotate(self.arm, -swing), flip, False)
-        arm2 = pygame.transform.flip(pygame.transform.rotate(self.arm, swing), flip, False)
+        back_leg = pygame.transform.flip(pygame.transform.rotate(self.leg, -swing), flip, False)
+        front_leg = pygame.transform.flip(pygame.transform.rotate(self.leg, swing), flip, False)
+
+        back_arm = pygame.transform.flip(pygame.transform.rotate(self.arm, -swing), flip, False)
+        front_arm = pygame.transform.flip(pygame.transform.rotate(self.arm, swing), flip, False)
 
         body = pygame.transform.flip(self.body, flip, False)
         head = pygame.transform.flip(self.head, flip, False)
 
-        screen.blit(leg1, (self.x - 10, self.y + 32))
-        screen.blit(leg2, (self.x + 10, self.y + 32))
-        screen.blit(arm1, (self.x - 12, self.y + 5))
-        screen.blit(body, (self.x, self.y))
-        screen.blit(arm2, (self.x + 12, self.y + 5))
-        screen.blit(head, (self.x, self.y - 28))
+        px = int(self.x)
+        py = int(self.y)
+
+        # Ноги: задняя -> передняя
+        screen.blit(back_leg, (px - 2, py + 12))
+        screen.blit(front_leg, (px + 2, py + 12))
+
+        # Верхняя часть: рука -> тело -> рука
+        screen.blit(back_arm, (px - 4, py))
+        screen.blit(body, (px, py))
+        screen.blit(front_arm, (px + 4, py))
+
+        # Голова
+        screen.blit(head, (px, py - 4))
