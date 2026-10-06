@@ -1,0 +1,47 @@
+{
+  "stone": {
+    "id": 1,
+    "name": "Stone",
+    "internal_name": "stone",
+    "texture": "stone.png",
+    "category": "natural",
+    "material": "rock",
+    "hardness": 1.5,
+    "blast_resistance": 6.0,
+    "transparent": false,
+    "solid": true,
+    "replaceable": false,
+    "gravity_affected": false,
+    "light_emission": 0,
+    "light_opacity": 15,
+    "flammable": false,
+    "burn_chance": 0,
+    "fire_spread_chance": 0,
+    "friction": 0.6,
+    "slipperiness": 0.6,
+    "jump_factor": 1.0,
+    "speed_factor": 1.0,
+    "harvest_tool": "pickaxe",
+    "harvest_level": "wood",
+    "requires_correct_tool": true,
+    "drops": [
+      {
+        "item": "cobblestone",
+        "count": 1,
+        "chance": 1.0
+      }
+    ],
+    "experience_drop": 0,
+    "stack_size": 64,
+    "has_collision": true,
+    "has_hitbox": true,
+    "can_be_placed": true,
+    "can_be_broken": true,
+    "tickable": false,
+    "interactable": false,
+    "waterloggable": false,
+    "rotation_states": 1,
+    "metadata": {},
+    "tags": ["stone", "mineable/pickaxe"]
+  }
+}
