@@ -13,6 +13,10 @@ class Player:
 
     PIVOT_TOP_OFFSET = 2
 
+    # Хитбокс персонажа
+    HITBOX_WIDTH_RATIO  = 0.5    # ширина = доля от ширины тела
+    HITBOX_HEIGHT_RATIO = 1.0    # высота = вся высота спрайта
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -52,12 +56,29 @@ class Player:
             + self.leg.get_height()
         )
 
+        # Размеры хитбокса
+        self.hitbox_w = int(self.body.get_width() * self.HITBOX_WIDTH_RATIO)
+        self.hitbox_h = int(self.total_height * self.HITBOX_HEIGHT_RATIO)
+
     def _scale(self, image, scale):
         w = max(1, round(image.get_width() * scale))
         h = max(1, round(image.get_height() * scale))
         return pygame.transform.scale(image, (w, h))
 
-    def update(self, keys, mouse_x):
+    # --- Прямоугольник хитбокса в мировых координатах ---
+    def get_hitbox(self, x=None, y=None):
+        if x is None:
+            x = self.x
+        if y is None:
+            y = self.y
+        # x, y — левый верхний угол визуального спрайта.
+        # Центрируем хитбокс по горизонтали относительно тела
+        body_center_x = x + self.body.get_width() / 2
+        left = body_center_x - self.hitbox_w / 2
+        top = y
+        return pygame.Rect(int(left), int(top), self.hitbox_w, self.hitbox_h)
+
+    def update(self, keys, mouse_x, collision, block_size):
         moving = False
         self.vx = 0
 
@@ -73,9 +94,95 @@ class Player:
         if moving:
             self.walk_time += 0.2
 
+        # --- Движение по X ---
         self.x += self.vx
+        self._resolve_horizontal(collision, block_size)
+
+        # --- Движение по Y ---
         self.vy += self.gravity
+        if self.vy > 30:
+            self.vy = 30
         self.y += self.vy
+        self._resolve_vertical(collision, block_size)
+
+    def _resolve_horizontal(self, collision, block_size):
+        self.on_ground = self.on_ground  # не сбрасываем здесь
+        box = self.get_hitbox()
+
+        # Границы сетки, которые может задеть хитбокс
+        start_col = int(box.left // block_size)
+        end_col   = int((box.right - 1) // block_size)
+        start_row = int(box.top // block_size)
+        end_row   = int((box.bottom - 1) // block_size)
+
+        world_h = len(collision)
+        world_w = len(collision[0]) if world_h else 0
+
+        for row in range(start_row, end_row + 1):
+            if row < 0 or row >= world_h:
+                continue
+            for col in range(start_col, end_col + 1):
+                if col < 0 or col >= world_w:
+                    continue
+                if not collision[row][col]:
+                    continue
+
+                block_rect = pygame.Rect(
+                    col * block_size, row * block_size,
+                    block_size, block_size
+                )
+                if not box.colliderect(block_rect):
+                    continue
+
+                # Разрешаем по X
+                if self.vx > 0:
+                    # Двигались вправо — упёрлись левым краем блока
+                    self.x -= (box.right - block_rect.left)
+                elif self.vx < 0:
+                    # Двигались влево — упёрлись правым краем блока
+                    self.x += (block_rect.right - box.left)
+                # Обновляем хитбокс после сдвига
+                box = self.get_hitbox()
+
+    def _resolve_vertical(self, collision, block_size):
+        self.on_ground = False
+        box = self.get_hitbox()
+
+        start_col = int(box.left // block_size)
+        end_col   = int((box.right - 1) // block_size)
+        start_row = int(box.top // block_size)
+        end_row   = int((box.bottom - 1) // block_size)
+
+        world_h = len(collision)
+        world_w = len(collision[0]) if world_h else 0
+
+        for row in range(start_row, end_row + 1):
+            if row < 0 or row >= world_h:
+                continue
+            for col in range(start_col, end_col + 1):
+                if col < 0 or col >= world_w:
+                    continue
+                if not collision[row][col]:
+                    continue
+
+                block_rect = pygame.Rect(
+                    col * block_size, row * block_size,
+                    block_size, block_size
+                )
+                if not box.colliderect(block_rect):
+                    continue
+
+                # Разрешаем по Y
+                if self.vy > 0:
+                    # Падаем вниз — приземляемся
+                    self.y -= (box.bottom - block_rect.top)
+                    self.vy = 0
+                    self.on_ground = True
+                elif self.vy < 0:
+                    # Летим вверх — бьёмся головой
+                    self.y += (block_rect.bottom - box.top)
+                    self.vy = 0
+                box = self.get_hitbox()
 
     def jump(self):
         if self.on_ground:
