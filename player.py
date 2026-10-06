@@ -3,6 +3,8 @@ import pygame
 
 
 class Player:
+    SCALE = 1.75
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -15,10 +17,16 @@ class Player:
         self.facing_right = True
         self.walk_time = 0
 
-        self.head = pygame.image.load('assets/player/head.png').convert_alpha()
-        self.body = pygame.image.load('assets/player/body.png').convert_alpha()
-        self.arm = pygame.image.load('assets/player/arm.png').convert_alpha()
-        self.leg = pygame.image.load('assets/player/leg.png').convert_alpha()
+        self.head = self._load_scaled('assets/player/head.png')
+        self.body = self._load_scaled('assets/player/body.png')
+        self.arm = self._load_scaled('assets/player/arm.png')
+        self.leg = self._load_scaled('assets/player/leg.png')
+
+    def _load_scaled(self, path):
+        image = pygame.image.load(path).convert_alpha()
+        width = round(image.get_width() * self.SCALE)
+        height = round(image.get_height() * self.SCALE)
+        return pygame.transform.scale(image, (width, height))
 
     def update(self, keys, mouse_x):
         moving = False
@@ -40,7 +48,7 @@ class Player:
         self.vy += self.gravity
         self.y += self.vy
 
-        ground_y = 360 - 24
+        ground_y = 360 - int(24 * self.SCALE)
         if self.y > ground_y:
             self.y = ground_y
             self.vy = 0
@@ -67,14 +75,11 @@ class Player:
         px = int(self.x)
         py = int(self.y)
 
-        # Ноги: задняя -> передняя
-        screen.blit(back_leg, (px - 2, py + 12))
-        screen.blit(front_leg, (px + 2, py + 12))
+        screen.blit(back_leg, (px - round(2 * self.SCALE), py + round(12 * self.SCALE)))
+        screen.blit(front_leg, (px + round(2 * self.SCALE), py + round(12 * self.SCALE)))
 
-        # Верхняя часть: рука -> тело -> рука
-        screen.blit(back_arm, (px - 4, py))
+        screen.blit(back_arm, (px - round(4 * self.SCALE), py))
         screen.blit(body, (px, py))
-        screen.blit(front_arm, (px + 4, py))
+        screen.blit(front_arm, (px + round(4 * self.SCALE), py))
 
-        # Голова
-        screen.blit(head, (px, py - 4))
+        screen.blit(head, (px, py - round(4 * self.SCALE)))
