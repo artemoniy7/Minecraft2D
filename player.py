@@ -24,7 +24,7 @@ class Player:
         self.vy = 0
         self.speed = 5
         self.gravity = 0.5
-        self.jump_force = -12
+        self.jump_force = -8.95  # ~1.25 блока при текущей гравитации
         self.on_ground = False
         self.facing_right = True
         self.walk_time = 0
@@ -89,6 +89,10 @@ class Player:
 
         if moving:
             self.walk_time += 0.2
+        else:
+            self.walk_time *= 0.72
+            if abs(self.walk_time) < 0.01:
+                self.walk_time = 0
 
         self.x += self.vx
         self._resolve_horizontal(world, block_size)
