@@ -1,5 +1,7 @@
 import pygame
 
+from block_registry import BlockRegistry
+
 pygame.init()
 
 WIDTH = 1280
@@ -12,15 +14,29 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Minecraft 2D")
 clock = pygame.time.Clock()
 
-stone_texture = pygame.image.load("assets/blocks/stone.png").convert_alpha()
-stone_texture = pygame.transform.scale(stone_texture, (BLOCK_SIZE, BLOCK_SIZE))
+registry = BlockRegistry()
+registry.load()
+
+stone = registry.get("stone")
+
+textures = {}
+if stone:
+    texture = pygame.image.load(f"assets/blocks/{stone.texture}").convert_alpha()
+    textures[stone.internal_name] = pygame.transform.scale(
+        texture,
+        (BLOCK_SIZE, BLOCK_SIZE),
+    )
 
 camera_x = 0
 camera_y = 0
 
 platform = []
 for x in range(15):
-    platform.append((x * BLOCK_SIZE, 0))
+    platform.append({
+        "block": stone,
+        "x": x * BLOCK_SIZE,
+        "y": 0,
+    })
 
 running = True
 while running:
@@ -41,12 +57,18 @@ while running:
 
     screen.fill((135, 206, 235))
 
-    for block_x, block_y in platform:
+    for block_data in platform:
+        block = block_data["block"]
+        texture = textures.get(block.internal_name)
+
+        if texture is None:
+            continue
+
         screen.blit(
-            stone_texture,
+            texture,
             (
-                block_x - camera_x,
-                HEIGHT // 2 + block_y - camera_y,
+                block_data["x"] - camera_x,
+                HEIGHT // 2 + block_data["y"] - camera_y,
             ),
         )
 
