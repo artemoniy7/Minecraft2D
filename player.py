@@ -72,7 +72,59 @@ class Player:
 
         body_center_x = x + self.body.get_width() / 2
         left = body_center_x - self.hitbox_w / 2
-        return pygame.Rect(int(left), int(y), self.hitbox_w, self.hitbox_h)
+        return pygame.Rect(
+            round(left),
+            round(y),
+            self.hitbox_w,
+            self.hitbox_h,
+        )
+
+    def _get_hitbox_bounds(self, x=None, y=None):
+        if x is None:
+            x = self.x
+        if y is None:
+            y = self.y
+
+        body_center_x = x + self.body.get_width() / 2
+        left = body_center_x - self.hitbox_w / 2
+        top = y
+        return (
+            left,
+            top,
+            left + self.hitbox_w,
+            top + self.hitbox_h,
+        )
+
+    def _find_collisions(self, world, block_size):
+        left, top, right, bottom = self._get_hitbox_bounds()
+
+        start_col = math.floor(left / block_size)
+        end_col = math.floor((right - 1e-9) / block_size)
+        start_row = math.floor(top / block_size)
+        end_row = math.floor((bottom - 1e-9) / block_size)
+
+        collisions = []
+        for row in range(start_row, end_row + 1):
+            for col in range(start_col, end_col + 1):
+                if not world.is_solid(col, row):
+                    continue
+
+                block_left = col * block_size
+                block_top = row * block_size
+                block_right = block_left + block_size
+                block_bottom = block_top + block_size
+
+                if (
+                    left < block_right
+                    and right > block_left
+                    and top < block_bottom
+                    and bottom > block_top
+                ):
+                    collisions.append(
+                        (block_left, block_top, block_right, block_bottom)
+                    )
+
+        return collisions
 
     def update(self, keys, mouse_x, world, block_size):
         moving = False
@@ -104,71 +156,41 @@ class Player:
         self._resolve_vertical(world, block_size)
 
     def _resolve_horizontal(self, world, block_size):
-        box = self.get_hitbox()
+        collisions = self._find_collisions(world, block_size)
 
-        start_col = math.floor(box.left / block_size)
-        end_col = math.floor((box.right - 1) / block_size)
-        start_row = math.floor(box.top / block_size)
-        end_row = math.floor((box.bottom - 1) / block_size)
+        if not collisions:
+            return
 
-        for row in range(start_row, end_row + 1):
-            for col in range(start_col, end_col + 1):
-                if not world.is_solid(col, row):
-                    continue
+        left, _, right, _ = self._get_hitbox_bounds()
 
-                block_rect = pygame.Rect(
-                    col * block_size,
-                    row * block_size,
-                    block_size,
-                    block_size,
-                )
-                if not box.colliderect(block_rect):
-                    continue
-
-                if self.vx > 0:
-                    self.x -= box.right - block_rect.left
-                elif self.vx < 0:
-                    self.x += block_rect.right - box.left
-
-                box = self.get_hitbox()
+        if self.vx > 0:
+            target_right = min(block[0] for block in collisions)
+            self.x += target_right - right
+        elif self.vx < 0:
+            target_right = max(block[2] for block in collisions)
+            self.x += target_right - left
 
     def _resolve_vertical(self, world, block_size):
         self.on_ground = False
-        box = self.get_hitbox()
+        collisions = self._find_collisions(world, block_size)
 
-        start_col = math.floor(box.left / block_size)
-        end_col = math.floor((box.right - 1) / block_size)
-        start_row = math.floor(box.top / block_size)
-        end_row = math.floor((box.bottom - 1) / block_size)
+        if not collisions:
+            return
 
-        for row in range(start_row, end_row + 1):
-            for col in range(start_col, end_col + 1):
-                if not world.is_solid(col, row):
-                    continue
+        left, top, right, bottom = self._get_hitbox_bounds()
 
-                block_rect = pygame.Rect(
-                    col * block_size,
-                    row * block_size,
-                    block_size,
-                    block_size,
-                )
-                if not box.colliderect(block_rect):
-                    continue
-
-                if self.vy > 0:
-                    self.y -= box.bottom - block_rect.top
-                    self.vy = 0
-                    self.on_ground = True
-                elif self.vy < 0:
-                    self.y += block_rect.bottom - box.top
-                    self.vy = 0
-
-                box = self.get_hitbox()
-
-    def jump(self):
-        if self.on_ground:
-            self.vy = self.jump_force
-            self.on_ground = False
+        if self.vy > 0:
+            # Ставим нижнюю грань точно на поверхность блока.
+            # Здесь больше нет округления координат, поэтому камера
+            # не получает чередующиеся микрокоррекции по Y.
+            target_top = min(block[1] for block in collisions)
+            self.y += target_top - bottom
+            self.vy = 0
+            self.on_ground = True
+        elif self.vy < 0:
+            target_bottom = max(block[3] for block in collisions)
+            self.y += target_bottom - top
+            self.vy = 0
 
     def _blit_pivoted(self, screen, image, angle, anchor_x, anchor_y, flip):
         if flip:
