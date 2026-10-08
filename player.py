@@ -155,6 +155,11 @@ class Player:
         self.y += self.vy
         self._resolve_vertical(world, block_size)
 
+    def jump(self):
+        if self.on_ground:
+            self.vy = self.jump_force
+            self.on_ground = False
+
     def _resolve_horizontal(self, world, block_size):
         collisions = self._find_collisions(world, block_size)
 
